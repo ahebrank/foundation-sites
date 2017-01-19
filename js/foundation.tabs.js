@@ -78,10 +78,37 @@ class Tabs {
       }
 
     });
+    
+    //current context-bound function to open tabs on page load or history popstate
+    this._checkDeepLink = () => {
+      if (!this.options.deepLink) {
+        return;
+      }
+      var anchor = window.location.hash;
+      //need a hash and a relevant anchor in this tabset
+      if(anchor.length) {
+        var $link = this.$element.find('[href="'+anchor+'"]');
+        if ($link.length) {
+          this.selectTab($(anchor));
+
+          //roll up a little to show the titles
+          if (this.options.deepLinkSmudge) {
+            var offset = this.$element.offset();
+            $('html, body').animate({ scrollTop: offset.top }, this.options.deepLinkSmudgeDelay);
+          }
+
+          /**
+            * Fires when the zplugin has deeplinked at pageload
+            * @event Tabs#deeplink
+            */
+           this.$element.trigger('deeplink.zf.tabs', [$link, $(anchor)]);
+         }
+       }
+    };
+    
     //use browser to open a tab, if it exists in this tabset
-    if (this.options.deepLink) {
-      this._checkDeepLink();
-    }
+    //and the deepLink option is set
+    this._checkDeepLink();
 
     if(this.options.matchHeight) {
       var $images = this.$tabContent.find('img');
@@ -92,33 +119,9 @@ class Tabs {
         this._setHeight();
       }
     }
-
-    this._checkDeepLink = this._checkDeepLink.bind(this);
     this._events();
   }
-
-  _checkDeepLink() {
-    var anchor = window.location.hash;
-    //need a hash and a relevant anchor in this tabset
-    if(anchor.length) {
-      var $link = this.$element.find('[href="'+anchor+'"]');
-      if ($link.length) {
-        this.selectTab($(anchor));
-
-        //roll up a little to show the titles
-        if (this.options.deepLinkSmudge) {
-          var offset = this.$element.offset();
-          $('html, body').animate({ scrollTop: offset.top }, this.options.deepLinkSmudgeDelay);
-        }
-
-        /**
-          * Fires when the zplugin has deeplinked at pageload
-          * @event Tabs#deeplink
-          */
-         this.$element.trigger('deeplink.zf.tabs', [$link, $(anchor)]);
-       }
-     }
-   }
+  
   /**
    * Adds event handlers for items within the tabs.
    * @private
@@ -133,8 +136,8 @@ class Tabs {
 
       $(window).on('changed.zf.mediaquery', this._setHeightMqHandler);
     }
-
-    if(this.options.deepLink) {
+    
+    if (this.options.updateHistory) {
       $(window).on('popstate', this._checkDeepLink);
     }
   }
@@ -371,7 +374,9 @@ class Tabs {
       }
     }
 
-    $(window).off('popstate', this._checkDeepLink);
+    if (this.options.updateHistory) {
+      $(window).off('popstate', this._checkDeepLink);
+    }
     Foundation.unregisterPlugin(this);
   }
 }
